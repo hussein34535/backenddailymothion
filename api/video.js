@@ -26,8 +26,8 @@ router.get('/video', async (req, res) => {
       responseType: 'stream' // Important for streaming the content
     });
 
-    // Set the correct content type for M3U8
-    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    // Set the correct content type for M3U8 (Trying alternative)
+    res.setHeader('Content-Type', 'application/x-mpegURL');
 
     // Pipe the M3U8 stream from Dailymotion to the client
     m3u8Response.data.pipe(res);
