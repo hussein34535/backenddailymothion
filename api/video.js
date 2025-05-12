@@ -77,9 +77,8 @@ router.get('/video', async (req, res) => {
     // 4. إزالة الجزء غير المرغوب فيه وإرسال الرابط المعدل كنص عادي
     const finalUrl = targetMediaUrl.replace(/#cell=cf3$/, ''); // إزالة #cell=cf3 من النهاية فقط
 
-    // Send the final URL as plain text
-    res.setHeader('Content-Type', 'text/plain');
-    res.status(200).send(finalUrl);
+    // Send the final URL as a JSON object
+    res.status(200).json({ url: finalUrl });
 
   } catch (err) {
     console.error("[/api/video] Error extracting media URL:", err);
