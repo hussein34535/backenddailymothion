@@ -69,11 +69,11 @@ router.get('/video', async (req, res) => {
 
     // 4. Send the extracted URL back to the client
     // Option 1: Send as JSON (Recommended)
-    res.status(200).json({ url: targetMediaUrl, quality: qualityFound });
+    // res.status(200).json({ url: targetMediaUrl, quality: qualityFound });
 
     // Option 2: Send as plain text
-    // res.setHeader('Content-Type', 'text/plain');
-    // res.status(200).send(targetMediaUrl);
+    res.setHeader('Content-Type', 'text/plain');
+    res.status(200).send(targetMediaUrl);
 
   } catch (err) {
     console.error("[/api/video] Error extracting media URL:", err);
