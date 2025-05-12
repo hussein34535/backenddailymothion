@@ -1,9 +1,9 @@
+const express = require('express');
+const router = express.Router();
 const axios = require('axios');
 
-module.exports = async (req, res) => {
-  const {
-    query: { id },
-  } = req;
+router.get('/video/:id', async (req, res) => {
+  const { id } = req.params;
 
   if (!id) {
     return res.status(400).send('Missing video ID');
@@ -25,4 +25,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     return res.status(500).send('Error getting video');
   }
-};
+});
+
+module.exports = router;
