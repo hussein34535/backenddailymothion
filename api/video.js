@@ -27,58 +27,37 @@ router.get('/video', async (req, res) => {
     const lines = m3u8Content.split('\n');
     const masterBaseUrl = masterM3u8Url.substring(0, masterM3u8Url.lastIndexOf('/') + 1);
 
-    // 3. Find the desired quality playlist URL (e.g., 720p, fallback to 480p, etc.)
-    let targetMediaUrl = null;
-    let qualityFound = null;
+    // 3. Extract all available quality URLs
+    const qualityUrls = {};
+    const nameRegex = /NAME="([^"]*)"/; // Regex to extract the quality name
 
-    // Prioritize qualities (e.g., 720p first)
-    const qualityPriorities = ["720", "480", "380"]; // Add or reorder as needed
+    for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
+        if (trimmedLine.startsWith('#EXT-X-STREAM-INF:')) {
+            const match = trimmedLine.match(nameRegex);
+            const qualityName = match && match[1] ? match[1] : null; // Extract name (e.g., "720")
 
-    for (const qualityName of qualityPriorities) {
-        for (let i = 0; i < lines.length; i++) {
-            const trimmedLine = lines[i].trim();
-            if (trimmedLine.startsWith('#EXT-X-STREAM-INF:') && trimmedLine.includes(`NAME="${qualityName}"`) && (i + 1 < lines.length)) {
-                const urlLine = lines[i+1].trim();
-                if (!urlLine.startsWith('#')) {
-                    targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
-                    qualityFound = qualityName;
-                    console.log(`Found target quality ${qualityFound}: ${targetMediaUrl}`);
-                    break; // Found the desired quality
-                }
-            }
-        }
-        if (targetMediaUrl) break; // Stop searching priorities if found
-    }
-
-    // Fallback: If no prioritized quality found, take the first media playlist URL
-    if (!targetMediaUrl) {
-        for (let i = 0; i < lines.length; i++) { // Use index loop to check next line
-            const trimmedLine = lines[i].trim();
-            // Look for #EXT-X-STREAM-INF to ensure the next line is a playlist URL
-            if (trimmedLine.startsWith('#EXT-X-STREAM-INF:') && (i + 1 < lines.length)) {
-                const urlLine = lines[i+1].trim();
-                // Ensure the next line is a URL and contains .m3u8
+            if (qualityName && (i + 1 < lines.length)) {
+                const urlLine = lines[i + 1].trim();
                 if (!urlLine.startsWith('#') && urlLine.includes('.m3u8')) {
-                    targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
-                    qualityFound = "first_available";
-                    console.log(`Using first available quality: ${targetMediaUrl}`);
-                    break; // Found the first available playlist URL
+                    let targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
+                    // Clean the URL
+                    const finalUrl = targetMediaUrl.replace(/#cell=cf3$/, '');
+                    qualityUrls[qualityName] = finalUrl; // Store URL with quality name as key
+                    console.log(`Found quality ${qualityName}: ${finalUrl}`);
                 }
             }
         }
     }
 
-    // Check if any media URL was found
-    if (!targetMediaUrl) {
-      console.log(`Could not extract any media playlist URL from the master playlist.`);
-      return res.status(404).send('Could not extract any media playlist URL from the master playlist.');
+    // Check if any qualities were found
+    if (Object.keys(qualityUrls).length === 0) {
+      console.log(`Could not extract any media playlist URLs from the master playlist.`);
+      return res.status(404).send('Could not extract any media playlist URLs from the master playlist.');
     }
 
-    // 4. إزالة الجزء غير المرغوب فيه وإرسال الرابط المعدل كنص عادي
-    const finalUrl = targetMediaUrl.replace(/#cell=cf3$/, ''); // إزالة #cell=cf3 من النهاية فقط
-
-    // Send the final URL as a JSON object
-    res.status(200).json({ url: finalUrl });
+    // 4. Send the JSON object containing all quality URLs
+    res.status(200).json(qualityUrls);
 
   } catch (err) {
     console.error("[/api/video] Error extracting media URL:", err);
