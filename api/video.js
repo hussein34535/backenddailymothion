@@ -21,16 +21,18 @@ router.get('/video', async (req, res) => {
       return res.status(404).send('Video not found');
     }
 
-    // Fetch the M3U8 content instead of redirecting
+    // Fetch the M3U8 content as text
     const m3u8Response = await axios.get(directUrl, {
-      responseType: 'stream' // Important for streaming the content
+      responseType: 'text' // Fetch as text instead of stream
     });
 
-    // Set the correct content type for M3U8 (Trying alternative)
-    res.setHeader('Content-Type', 'application/x-mpegURL');
+    console.log("Fetched M3U8 Content:\n", m3u8Response.data); // Log the M3U8 content
 
-    // Pipe the M3U8 stream from Dailymotion to the client
-    m3u8Response.data.pipe(res);
+    // Set the correct content type for M3U8
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl'); // Revert to standard type, or keep x-mpegURL if preferred
+
+    // Send the M3U8 content as the response body
+    res.send(m3u8Response.data);
 
   } catch (err) {
     console.error("Error fetching or proxying video:", err); // Add logging for server-side errors
