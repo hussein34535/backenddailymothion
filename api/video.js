@@ -1,12 +1,16 @@
-const express = require('express');
 const axios = require('axios');
-const app = express();
 
-app.get('/video/:id', async (req, res) => {
-  const videoId = req.params.id;
+module.exports = async (req, res) => {
+  const {
+    query: { id },
+  } = req;
+
+  if (!id) {
+    return res.status(400).send('Missing video ID');
+  }
 
   try {
-    const metadataUrl = `https://www.dailymotion.com/player/metadata/video/${videoId}`;
+    const metadataUrl = `https://www.dailymotion.com/player/metadata/video/${id}`;
     const response = await axios.get(metadataUrl);
     const qualities = response.data.qualities;
 
@@ -17,14 +21,8 @@ app.get('/video/:id', async (req, res) => {
       return res.status(404).send('Video not found');
     }
 
-    // redirect المستخدم للرابط المؤقت
     return res.redirect(directUrl);
   } catch (err) {
     return res.status(500).send('Error getting video');
   }
-});
-
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
-
+};
