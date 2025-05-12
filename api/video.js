@@ -27,39 +27,59 @@ router.get('/video', async (req, res) => {
     const lines = m3u8Content.split('\n');
     const masterBaseUrl = masterM3u8Url.substring(0, masterM3u8Url.lastIndexOf('/') + 1);
 
-    // 3. Find the 720p quality playlist URL
+    // 3. Find the desired quality playlist URL (e.g., 720p, fallback to 480p, etc.)
     let targetMediaUrl = null;
-    const qualityToFind = "720";
-    let qualityFound = false; // Flag to track if 720p was found
+    let qualityFound = null;
 
-    for (let i = 0; i < lines.length; i++) {
-        const trimmedLine = lines[i].trim();
-        // Look for the specific 720p stream info line
-        if (trimmedLine.startsWith('#EXT-X-STREAM-INF:') && trimmedLine.includes(`NAME="${qualityToFind}"`) && (i + 1 < lines.length)) {
-            const urlLine = lines[i+1].trim();
-            // Ensure the next line is a URL
-            if (!urlLine.startsWith('#')) {
-                // Construct the absolute URL if it's relative
-                targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
-                qualityFound = true;
-                console.log(`Found target quality ${qualityToFind}: ${targetMediaUrl}`);
-                break; // Found 720p, no need to continue searching
+    // Prioritize qualities (e.g., 720p first)
+    const qualityPriorities = ["720", "480", "380"]; // Add or reorder as needed
+
+    for (const qualityName of qualityPriorities) {
+        for (let i = 0; i < lines.length; i++) {
+            const trimmedLine = lines[i].trim();
+            if (trimmedLine.startsWith('#EXT-X-STREAM-INF:') && trimmedLine.includes(`NAME="${qualityName}"`) && (i + 1 < lines.length)) {
+                const urlLine = lines[i+1].trim();
+                if (!urlLine.startsWith('#')) {
+                    targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
+                    qualityFound = qualityName;
+                    console.log(`Found target quality ${qualityFound}: ${targetMediaUrl}`);
+                    break; // Found the desired quality
+                }
+            }
+        }
+        if (targetMediaUrl) break; // Stop searching priorities if found
+    }
+
+    // Fallback: If no prioritized quality found, take the first media playlist URL
+    if (!targetMediaUrl) {
+        for (let i = 0; i < lines.length; i++) { // Use index loop to check next line
+            const trimmedLine = lines[i].trim();
+            // Look for #EXT-X-STREAM-INF to ensure the next line is a playlist URL
+            if (trimmedLine.startsWith('#EXT-X-STREAM-INF:') && (i + 1 < lines.length)) {
+                const urlLine = lines[i+1].trim();
+                // Ensure the next line is a URL and contains .m3u8
+                if (!urlLine.startsWith('#') && urlLine.includes('.m3u8')) {
+                    targetMediaUrl = urlLine.startsWith('http') ? urlLine : new URL(urlLine, masterBaseUrl).href;
+                    qualityFound = "first_available";
+                    console.log(`Using first available quality: ${targetMediaUrl}`);
+                    break; // Found the first available playlist URL
+                }
             }
         }
     }
 
-    // Check if the 720p quality was specifically found
-    if (!qualityFound) {
-      console.log(`Quality ${qualityToFind}p not found in master playlist.`);
-      // Return 404 if 720p is not available
-      return res.status(404).send(`Quality ${qualityToFind}p not found for this video.`);
+    // Check if any media URL was found
+    if (!targetMediaUrl) {
+      console.log(`Could not extract any media playlist URL from the master playlist.`);
+      return res.status(404).send('Could not extract any media playlist URL from the master playlist.');
     }
 
-    // 4. إزالة الجزء غير المرغوب فيه وإرسال الرابط المعدل
+    // 4. إزالة الجزء غير المرغوب فيه وإرسال الرابط المعدل كنص عادي
     const finalUrl = targetMediaUrl.replace(/#cell=cf3$/, ''); // إزالة #cell=cf3 من النهاية فقط
 
-    // Perform an HTTP 302 redirect to the extracted M3U8 URL
-    res.redirect(302, finalUrl);
+    // Send the final URL as plain text
+    res.setHeader('Content-Type', 'text/plain');
+    res.status(200).send(finalUrl);
 
   } catch (err) {
     console.error("[/api/video] Error extracting media URL:", err);
