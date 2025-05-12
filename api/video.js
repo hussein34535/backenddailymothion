@@ -21,8 +21,22 @@ router.get('/video', async (req, res) => {
       return res.status(404).send('Video not found');
     }
 
-    return res.redirect(directUrl);
+    // Fetch the M3U8 content instead of redirecting
+    const m3u8Response = await axios.get(directUrl, {
+      responseType: 'stream' // Important for streaming the content
+    });
+
+    // Set the correct content type for M3U8
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+
+    // Pipe the M3U8 stream from Dailymotion to the client
+    m3u8Response.data.pipe(res);
+
   } catch (err) {
+    console.error("Error fetching or proxying video:", err); // Add logging for server-side errors
+    if (err.response && err.response.status === 403) {
+        return res.status(403).send('Dailymotion rejected the request (Forbidden).');
+    }
     return res.status(500).send('Error getting video');
   }
 });
