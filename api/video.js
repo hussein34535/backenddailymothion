@@ -11,15 +11,16 @@ export default async function handler(req, res) {
   try {
     let masterM3u8Url = null;
 
+    // Default headers for Dailymotion requests
+    const dailymotionHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+      "Referer": "https://www.dailymotion.com/"
+    };
+
     if (id) {
       const metadataUrl = `https://www.dailymotion.com/player/metadata/video/${id}`;
-      const metadataResponse = await axios.get(metadataUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          "Accept": "application/json",
-          "Referer": "https://www.dailymotion.com"
-        }
-      });
+      const metadataResponse = await axios.get(metadataUrl, { headers: dailymotionHeaders });
 
       const qualities = metadataResponse.data?.qualities || null;
 
@@ -53,10 +54,10 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Could not find master m3u8 URL in metadata" });
     }
 
-    // Fetch master playlist
+    // Fetch master playlist with headers
     const m3u8Response = await axios.get(masterM3u8Url, {
       responseType: "text",
-      headers: { "User-Agent": "Mozilla/5.0" }
+      headers: dailymotionHeaders // Use the same headers
     });
 
     const m3u8Content = m3u8Response.data;
