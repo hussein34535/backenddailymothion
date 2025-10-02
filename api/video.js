@@ -1,5 +1,4 @@
 import axios from "axios";
-import { URL } from "url";
 
 export default async function handler(req, res) {
   try {
@@ -9,11 +8,13 @@ export default async function handler(req, res) {
     const decodedUrl = decodeURIComponent(url);
     console.log("Fetching:", decodedUrl);
 
-    const response = await fetch(decodedUrl);
-    const text = await response.text();
+    const response = await axios.get(decodedUrl);
+    const text = response.data;
 
-    console.log("Response status:", response.status);
-    res.status(200).send(text);
+    // هنا نخلي الدالة ترجع بس كل الروابط اللي في النص
+    const urls = Array.from(text.matchAll(/https?:\/\/[^\s'\"]+/g)).map(m => m[0]);
+
+    res.status(200).json({ links: urls });
 
   } catch (err) {
     console.error("Serverless Error:", err);
